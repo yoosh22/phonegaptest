@@ -1,0 +1,27 @@
+{
+  "prepare_queue": {
+    "installed": [],
+    "uninstalled": []
+  },
+  "config_munge": {
+    "files": {}
+  },
+  "installed_plugins": {
+    "cordova-plugin-whitelist": {
+      "PACKAGE_NAME": "com.example.matzip"
+    },
+    "cordova-plugin-camera": {
+      "PACKAGE_NAME": "com.example.matzip"
+    },
+    "cordova-plugin-geolocation": {
+      "PACKAGE_NAME": "com.example.matzip"
+    },
+    "cordova-plugin-file": {
+      "PACKAGE_NAME": "com.example.matzip"
+    },
+    "cordova-plugin-dialogs": {
+      "PACKAGE_NAME": "com.example.matzip"
+    }
+  },
+  "dependent_plugins": {}
+}

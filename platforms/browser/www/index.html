@@ -1,0 +1,376 @@
+﻿<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="initial-scale=1.0, width=device-width">
+<title>맛집 앱</title>
+
+	<!-- 제이쿼리모바일, 제이쿼리, 폰갭 라이브러리 파일(다운로드 방식)  -->  
+<link rel="stylesheet" href="jquery.mobile/jquery.mobile-1.4.5.min.css"/>
+<script src="jquery.mobile/jquery-1.11.1.min.js"></script>
+<script src="jquery.mobile/jquery.mobile-1.4.5.min.js"></script>
+<script src="cordova.js"></script>
+
+	<!-- 구글맵 API 라이브러리 파일(CDN 방식)  -->
+<script src="http://maps.google.com/maps/api/js?sensor=true&language=ko"></script>  
+
+	<!-- jquery-ui-map 플러그인 라이브러리 파일(다운로드 방식)  -->
+<script src="ui/min/jquery.ui.map.full.min.js"></script>  
+<script src="ui/jquery.ui.map.extensions.js"></script>	 
+
+	<!-- 사용자 정의 자바스크립트 파일  -->
+<script src="dbHandle.js"></script>	
+<script src="photoHandle.js"></script>	
+<script src="cafeDisplay.js"></script>
+	
+<script> 	
+	// 전역변수
+	var db = null;     		// DB 객체
+	var varCafeName;   		// 현재 맛집 이름
+	var recordSet = null; 	// 현재 레코드셋
+	var varPosition = null; // 현재 레코드		
+	var flag;  					// 입력/수정 페이지 식별
+	
+	$(document).ready(function() {
+	// 폰갭 API 초기화
+		initPhoneGap();
+
+ 	// DB, Table 열기			
+	    openDB();  
+	    createTable();  
+ 						
+ 	// 이벤트 함수 정의	      		
+		$('#btnAdd').click(function() {
+			insertCafe(); 
+		});		
+	   $('#btnAddCancel').click( function(){
+			$('#cafeType2').val('미정').attr('selected', 'selected'); 
+			$('#cafeType2').selectmenu('refresh'); 
+			$('#cafeRegion2').val('미정').attr('selected', 'selected'); 
+			$('#cafeRegion2').selectmenu('refresh');
+			$('#cafeScore2').val('0').slider('refresh'); 
+			form2.reset();     		
+	   });	    
+	   $('#btnModifySearch').click( function(){
+			var name = $('#sCafeName2').val();
+			selectCafeModify(name);
+	   });
+	   $('#btnUpdate').click( function(){  	
+			updateCafe();	
+		}); 
+	   $('#btnDelete').click( function(){  	
+			deleteCafe();
+	   }); 	    	      
+	   $('#btnModifyCancel').click( function(){
+			$('#cafeType2').val('미정').attr('selected', 'selected'); 
+			$('#cafeType2').selectmenu('refresh'); 
+			$('#cafeRegion2').val('미정').attr('selected', 'selected'); 
+			$('#cafeRegion2').selectmenu('refresh');
+			$('#cafeScore2').val('0').slider('refresh'); 
+			form2.reset();     				
+	   }); 	
+	   $('#btnCafeListSearch').click( function(){
+		   selectCafeList(); 
+	   });
+		$('#btnTakePic1').click( function(){
+			if ($('#cafePic1').val() == ''){
+ 				navigator.notification.alert('사진 이름을 먼저 입력하세요', null, '입력오류');	   			
+			} else {	   			
+				flag='enrol';
+		  		capturePhoto();
+			} 
+		});
+	   $('#btnTakePic2').click( function(){
+	   		if ($('#cafePic2').val() == ''){
+        		navigator.notification.alert('사진 이름을 먼저 입력하세요', null, '입력오류');	   			
+			} else {	   			
+		  		flag='modify';
+			   capturePhoto('change'); 
+	  	 	} 
+	   });	    
+	   $('#btnPicShow').click( function(){   
+ 			getCafePic(); 	    	   
+	   });	
+	   $('#btnMapShow').click( function(){   
+ 			getCafeAddressMap(); 	    	   
+	   });
+	   $('#btnRouteShow').click( function(){   
+ 			getCafeRouteMap(); 	    	   
+	   });
+	});	
+	
+   function initPhoneGap() {
+ 		document.addEventListener('deviceready', onDeviceReady, true);
+	}   
+   function onDeviceReady() {
+		navigator.notification.alert('장치 준비됨', null, '폰갭 API');
+	} 
+</script>
+<style type="text/css">
+	#logo { display: block; margin: 50px auto; }
+	.my_listview_img { padding:10px; }
+	#btnGroup { margin: 5px 5px; }
+	#picArea { width:100%; height: width*3/4; }
+	#mapArea, #routeArea { width:100%; height: 330px; }	
+</style>
+</head>
+
+<body>
+<div data-role="page" id="mainPage">
+	<div data-role="header" data-position="fixed">
+		<h1>맛집 사랑</h1>
+		<a href="#page1" data-icon="home" data-iconpos="notext" class="ui-btn-right" >Home</a>
+	</div>
+	<div data-role="content">
+		<img id="logo" src="goodcafe.png">
+		<ul data-role="listview" data-inset="true" >
+			<li><a href="#cafeEnrolPage">맛집 정보 등록</a></li>
+			<li><a href="#cafeModifyPage">맛집 정보 수정</a></li>
+			<li><a href="#cafeSearchPage">맛집 정보 조회</a></li>
+		</ul>
+	</div>
+	<div data-role="footer" data-position="fixed">
+		<h4>Good Food & Good Cafe</h4>
+	</div>
+</div>
+
+<div data-role="page" id="cafeEnrolPage">
+	<div data-role="header" data-position="fixed">
+		<a href="#" data-icon="back" data-rel="back" data-direction="reverse">Back</a>
+		<h1>맛집 사랑</h1>
+		<a href="#mainPage" data-icon="home" data-iconpos="notext">Home</a>
+		<div data-role="navbar">
+			<ul>
+			<li><a href="#cafeEnrolPage">맛집  등록</a></li>
+			<li><a href="#cafeModifyPage">맛집  수정</a></li>
+			<li><a href="#cafeSearchPage">맛집  조회</a></li>
+			</ul>
+		</div>
+	</div>
+	<div data-role="content">
+		<form name="form1">  
+			<h3>맛집 정보 등록</h3>
+			<div class="ui-body ui-body-a gap">			
+				<label for="cafeName1">맛집명  : </label>
+			 	<input type="text" name="cafeName1" id="cafeName1" data-mini="true"/>
+				<label for="cafeType1" class="select">업종 :</label>
+				<select name="cafeType1" id="cafeType1" data-native-menu="false" data-mini="true" data-inline="true">
+					<option value="미정">미정</option>
+					<option value="한식">한식</option>
+					<option value="양식">양식</option>
+					<option value="중식">중식</option>
+					<option value="일식">일식</option>
+					<option value="주점">주점</option>
+					<option value="기타">기타</option>
+				</select>	 	
+				<label for="cafeRegion1" class="select">지역 :</label>
+				<select name="cafeRegion1" id="cafeRegion1" data-native-menu="false" data-mini="true" data-inline="true">
+					<option value="미정">미정</option>
+					<option value="서울">서울</option>
+					<option value="경기">경기</option>
+					<option value="강원">강원</option>
+					<option value="호남">호남</option>
+					<option value="영남">영남</option>
+					<option value="충청">충청</option>
+					<option value="제주">제주</option>
+				</select>		
+				<label for="cafeScore1">평가 : </label>
+				<input type="range" name="cafeScore1" id="cafeScore1" min="0" max="10"/>
+			 	<label for="cafePhone1">전화 : </label>
+				<input type="tel" name="cafePhone1" id="cafePhone1" data-mini="true" placeholder="예) 031-123-4567"/>
+			 	<label for="cafeAddress1">주소 : </label>
+				<input type="text" name="cafeAddress1" id="cafeAddress1" data-mini="true"/>		
+				<label for="cafeMemo1">메모 : </label>	
+				<textarea cols="25" rows="5" name="cafeMemo1" id="cafeMemo1" data-mini="true"></textarea>	
+				<label for="cafePic1">사진 : </label>			
+				<input type="text" name="cafePic1" id="cafePic1" data-mini="true" placeholder="예) 길목 or Gilmok"/>	
+				<input type="button" name="takePic1" id="btnTakePic1" value="사진촬영" data-mini="true"/>					
+			</div>			
+			<div class="ui-body">
+				<fieldset class="ui-grid-a">
+					<div class="ui-block-a">
+	                    <input type="reset" id="btnAddCancel" value="취소"/>
+					</div>
+					<div class="ui-block-b">
+	                    <input type="button" id="btnAdd" value="추가"/>
+					</div>
+				</fieldset>
+			</div>				
+		</form> 
+	</div>
+	<div data-role="footer" data-position="fixed">
+		<h4>Good Food & Good Cafe</h4>
+	</div>
+</div>
+
+<div data-role="page" id="cafeModifyPage">
+	<div data-role="header" data-position="fixed">
+		<a href="#" data-icon="back" data-rel="back" data-direction="reverse">Back</a>
+		<h1>맛집 사랑</h1>
+		<a href="#mainPage" data-icon="home" data-iconpos="notext">Home</a>
+		<div data-role="navbar">
+			<ul>
+			<li><a href="#cafeEnrolPage">맛집  등록</a></li>
+			<li><a href="#cafeModifyPage">맛집 수정</a></li>
+			<li><a href="#cafeSearchPage">맛집 조회</a></li>
+			</ul>
+		</div>
+	</div>
+	<div data-role="content">
+		<form name="form2">  
+			<h3>맛집정보 수정</h3>
+			<div class="ui-body ui-body-a gap">		
+				<label for="sCafeName2">맛집명  : </label>
+			 	<input type="search" name="sCafeName2" id="sCafeName2" value="" data-mini="true" />
+				<label for="cafeType2" class="select" >업종 :</label>
+				<select name="cafeType2" id="cafeType2" data-native-menu="false" data-mini="true" data-inline="true">
+					<option value="미정">미정</option>
+					<option value="한식">한식</option>
+					<option value="양식">양식</option>
+					<option value="중식">중식</option>
+					<option value="일식">일식</option>
+					<option value="주점">주점</option>
+					<option value="기타">기타</option>
+				</select>	 	
+				<label for="cafeRegion2" class="select">지역 :</label>
+				<select name="cafeRegion2" id="cafeRegion2" data-native-menu="false" data-mini="true" data-inline="true">
+					<option value="미정">미정</option>
+					<option value="서울">서울</option>
+					<option value="경기">경기</option>
+					<option value="강원">강원</option>
+					<option value="호남">호남</option>
+					<option value="영남">영남</option>
+					<option value="충청">충청</option>
+					<option value="제주">제주</option>
+				</select>		
+				<label for="cafeScore2">평가 : </label>
+				<input type="range" name="cafeScore2" id="cafeScore2" min="0" max="10"/>
+			 	<label for="cafePhone2">전화 : </label>
+				<input type="tel" name="cafePhone2" id="cafePhone2" data-mini="true" placeholder="예) 031-123-4567"/>
+			 	<label for="cafeAddress2">주소 : </label>
+				<input type="text" name="cafeAddress2" id="cafeAddress2" data-mini="true"/>		
+				<label for="cafeMemo2">메모 : </label>	
+				<textarea cols="25" rows="5" name="cafeMemo2" id="cafeMemo2"  data-mini="true"></textarea>	
+				<label for="cafePic2">사진 : </label>			
+				<input type="text" name="cafePic2" id="cafePic2" data-mini="true" placeholder="예) 길목 or Gilmok"/>	
+				<input type="button" name="takePic2" id="btnTakePic2" value="사진재촬영" data-mini="true"/>				
+			</div><br/>	
+			<div data-role="controlgroup" data-type="horizontal">
+	             <input type="reset" id="btnModifyCancel" value="취소"/>
+		         <input type="button" id="btnUpdate" value="수정"/>		
+		         <input type="button" id="btnDelete" value="삭제"/>	
+	             <input type="button" id="btnModifySearch" value="검색"/>
+            </div>			
+		</form> 
+	</div>
+	<div data-role="footer" data-position="fixed">
+		<h4>Good Food & Good Cafe</h4>
+	</div>
+</div>
+
+<div data-role="page" id="cafeSearchPage">
+	<div data-role="header" data-position="fixed">
+		<a href="#" data-icon="back" data-rel="back" data-direction="reverse">Back</a>
+		<h1>맛집 사랑</h1>
+		<a href="#mainPage" data-icon="home" data-iconpos="notext">Home</a>
+		<div data-role="navbar">
+			<ul>
+			<li><a href="#cafeEnrolPage">맛집  등록</a></li>
+			<li><a href="#cafeModifyPage">맛집 수정</a></li>
+			<li><a href="#cafeSearchPage">맛집 조회</a></li>
+			</ul>
+		</div>
+	</div>	
+	<div data-role="content">
+			<div class="ui-body">
+				<fieldset class="ui-grid-b">
+					<div class="ui-block-a">
+						<select name="cafeType3" id="cafeType3" data-native-menu="false" data-mini="true" data-inline="true">
+							<option>업종</option>
+							<option value="%">전체</option>					
+							<option value="한식">한식</option>
+							<option value="양식">양식</option>
+							<option value="중식">중식</option>
+							<option value="일식">일식</option>
+							<option value="주점">주점</option>
+							<option value="기타">기타</option>
+						</select>
+					</div>
+					<div class="ui-block-b">
+						<select name="cafeRegion3" id="cafeRegion3" data-native-menu="false" data-mini="true" data-inline="true">
+							<option>지역</option>
+							<option value="%">전국</option>					
+							<option value="서울">서울</option>
+							<option value="경기">경기</option>
+							<option value="강원">강원</option>
+							<option value="호남">호남</option>
+							<option value="영남">영남</option>
+							<option value="충청">충청</option>
+							<option value="제주">제주</option>
+						</select>
+					</div>								
+					<div class="ui-block-c" style="vertical-aligh:top">
+					    <input type="button" id="btnCafeListSearch" value="목록검색" data-mini="true" data-inline="true"/> 
+					</div>
+				</fieldset>
+			</div>			  
+		<ul data-role="listview" id="cafeListArea" data-divider-theme="b" data-inset="true">
+		       <!-- 카페 리스트 표시 영역 -->
+		</ul>       
+	</div>											
+	<div data-role="footer" data-position="fixed">
+		<h4>Good Food & Good Cafe</h4>
+	</div>	
+</div>	
+
+<div data-role="page" id="cafeInfoShowPage">
+	<div data-role="header" data-position="fixed">
+		<a href="#" data-icon="back" data-rel="back" data-direction="reverse">Back</a>
+		<h1>맛집 사랑</h1>
+		<a href="#mainPage" data-icon="home" data-iconpos="notext">Home</a>
+		<div data-role="navbar">
+			<ul>
+			<li><a href="#cafeEnrolPage">맛집  등록</a></li>
+			<li><a href="#cafeModifyPage">맛집 수정</a></li>
+			<li><a href="#cafeSearchPage">맛집 조회</a></li>
+			</ul>
+		</div>
+	</div>	
+	<div data-role="content">	
+		<div id="btnGroup">
+			<span id="btnPicShow"><button data-role="none">사진보기</button></span>		
+			<span id="btnRouteShow"><button data-role="none">찾아가기</button></span>
+		</div>     
+		<div class="ui-body ui-body-a"><br/>	
+			<div id="cafeInfoArea">		
+				카페 정보 표시 영역
+			</div>				
+		</div>
+	</div>							
+	<div data-role="footer" data-position="fixed">
+		<h4>Good Food & Good Cafe</h4>
+	</div>	
+</div>	
+
+<div data-role="dialog" id="picShowDialog" data-theme="b">
+	<div data-role="header"  data-theme="b">
+		<h1>맛집 사진</h1>
+	</div>
+	<div data-role="content"  data-theme="b">
+		<div id="picName" class="ui-bar ui-bar-a"></div><br/>   
+		<div><img id="picArea" src=""/></div>	
+	</div>
+</div>
+
+<div data-role="dialog" id="routeShowDialog" data-theme="b">
+	<div data-role="header"  data-theme="b">
+		<h1>맛집 경로</h1>
+	</div>
+	<div data-role="content"  data-theme="b">
+		<div id="routeName" class="ui-bar ui-bar-a"></div><br/>   
+		<div id="routeArea"></div>	
+	</div>
+</div>
+</body>
+</html>
+
